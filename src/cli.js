@@ -3,13 +3,13 @@ import inquirer from 'inquirer';
 import os from 'os'
 import fs from 'fs'
 import path from 'path'
+import { createOrOpen } from './main';
 
 
 
 function projectsExist(){
   const portableDir = path.join(os.homedir(), '/Desktop/vscPortable')
-  console.log(portableDir)
-
+  
   try {
     fs.statSync(portableDir).isDirectory();
     return true
@@ -59,23 +59,23 @@ function parseArgumentsIntoOptions(rawArgs) {
 }
 
 async function promptForMissingOptions(options) {
-  if(options.listProjects){
-
-  }
 
   const taskQuestion = [];
   const questions = []
-  taskQuestion.push({
-    type: 'list',
-    name: 'task',
-    message: 'What would you like to do today?',
-    choices: [
-      'Create a new portable project', 
-      'Open an existing portable project', 
-      'List all existing portable projects'
-    ],
-    // default: 'Create a new portable project'
-  });
+  if(!options.createProject && !options.openProject && !options.listProjects){
+    taskQuestion.push({
+      type: 'list',
+      name: 'task',
+      message: 'What would you like to do today?',
+      choices: [
+        'Create a new portable project', 
+        'Open an existing portable project', 
+        'List all existing portable projects'
+      ],
+      // default: 'Create a new portable project'
+    });
+  }
+
   const taskAnswer = await inquirer.prompt(taskQuestion);
   if(taskAnswer.task === 'Create a new portable project'){
     questions.push({
@@ -131,5 +131,6 @@ async function promptForMissingOptions(options) {
 export async function cli(args) {
   let options = parseArgumentsIntoOptions(args);
   options = await promptForMissingOptions(options);
-  console.log(options);
+  // console.log(options);
+  await createOrOpen(options)
 }
