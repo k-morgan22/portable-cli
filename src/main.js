@@ -2,27 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { spawn } from 'child_process';
-import { https } from 'follow-redirects';
 import extract from 'extract-zip';
-
-async function checkStatus(dir){
-  const appExists = fs.existsSync(path.join(dir, '/Visual\ Studio\ Code.app'))
-  const dataExists = fs.existsSync(path.join(dir, '/code-portable-data'))
-  const starterExists = fs.existsSync(path.join(dir, '/starter'))
-
-  if(appExists && dataExists && starterExists){
-    console.log("All files downloaded, opening mern stack in vs code")
-    openProject("react")
-  }
-
-}
+import axios from 'axios';
 
 async function unzipFiles(zip, dir){
-  // console.log("you have activated my trap card haha")
-
   try {
     await extract(zip, { dir: dir })
-    console.log('Extraction complete:', zip)
+    // console.log('Extraction complete:', zip)
   } catch (err) {
     console.log(err)
   }
@@ -32,44 +18,48 @@ async function unzipFiles(zip, dir){
       console.log(err);
     }
   })
-
-  checkStatus(dir)
-
+  // console.log('file deleted:', zip)
 }
 
-async function downloadZip(downloadUrl, zipFileName, dir){
-  https.get(downloadUrl,function(res){
-    const filestream = fs.createWriteStream(zipFileName);
-    res.pipe(filestream);
+async function downloadZip(downloadUrl, zipFileName){
 
-    filestream.on("error",function(err){
-      console.log("Error writing to the stream for the following url:", downloadUrl);
+  const filestream = fs.createWriteStream(zipFileName);
+  const response = await axios.get(downloadUrl, {responseType: "stream"})
+    .catch((err) =>{
+      console.log("Error downloading the file for the following url:", downloadUrl)
       console.log(err);
     })
 
-    filestream.on("finish",function(){
+  response.data.pipe(filestream)
+
+  return new Promise(async (resolve, reject) => {
+    filestream.on('finish', async () => {
       filestream.close();
-      console.log("Download Complete for the following file", zipFileName);
-    });
-
-    filestream.on("close",function(){
-      unzipFiles(zipFileName, dir)
+      // console.log("Download Complete for the following file", zipFileName);
+      // await unzipFiles(zipFileName, dir)
+      resolve(true)
     })
-
-  }).on("error",function(err){
-    console.log("Error downloading the file for the following url:", downloadUrl);
-    console.log(err);
+    filestream.on('error', (err) =>{
+      console.log("Error downloading the file for the following url:", downloadUrl)
+      console.log(err);
+      reject
+    })
   })
-
 }
 
-async function openProject(name){
+async function openProject(name, withTemplate){
   
   const portableDir = path.join(os.homedir(), '/Desktop/vscPortable')
   const appPath = path.join(portableDir, name, '/Visual\ Studio\ Code.app')
-  // do I need projectPath that points to starter folder?
+  const starterFiles = path.join(portableDir, name, '/starter')
 
-  const open = spawn('open', ["-a", appPath])
+  let open;
+
+  if(withTemplate){
+    open = spawn('open', ["-a", appPath, starterFiles])
+  }else{
+    open = spawn('open', ["-a", appPath])
+  }
 
   open.stdout.on("data", (data)=>{
     console.log(`data:\n${data}`)
@@ -79,19 +69,12 @@ async function openProject(name){
     console.log(`error: ${err}`);
   })
 
-  //withTemplate = false
-  // if(withTemplate){
-  //   const open = spawn('open', ["-a", appPath, starterDir])
-  // } else{
-  //   const open = spawn('open', ["-a", appPath])
-  // }
-
 }
 
 async function createProject(name){
 
   const projectDir = path.join(os.homedir(), '/Desktop/vscPortable', name)
-  console.log(projectDir)
+  // console.log(projectDir)
 
   const vscDownloadUrl = "https://go.microsoft.com/fwlink/?LinkID=620882"
   const vscZipName = path.join(projectDir, 'vscode-portable.zip')
@@ -106,11 +89,17 @@ async function createProject(name){
     fs.mkdirSync(projectDir, {recursive: true});
   }
   
-  downloadZip(vscDownloadUrl, vscZipName, projectDir)
+  console.log("Downloading Necessary Files ....")
 
-  downloadZip(portableDataDownloadUrl, portableDataZipName, projectDir)
+  await Promise.all([downloadZip(mernStarterDownloadUrl, mernStarterZipName), downloadZip(vscDownloadUrl, vscZipName), downloadZip(portableDataDownloadUrl, portableDataZipName)]);
+  console.log("Installing .....")
+  
 
-  downloadZip(mernStarterDownloadUrl, mernStarterZipName, projectDir)
+  await Promise.all([unzipFiles(mernStarterZipName, projectDir), unzipFiles(vscZipName, projectDir), unzipFiles(portableDataZipName, projectDir)]);
+  console.log("Opening VS Code ....")
+
+  openProject(name, true)
+
 
 }
 
@@ -122,7 +111,7 @@ export async function createOrOpen(options){
 
   if(options.openProject){
     const projectName = options.openProject
-    openProject(projectName)
+    openProject(projectName, false)
   } 
 
   if(options.createProject){
@@ -131,6 +120,3 @@ export async function createOrOpen(options){
   }
 
 }
-
-// const portableDir = path.join(os.homedir(), '/Desktop/vscPortable')
-// console.log(portableDir)
