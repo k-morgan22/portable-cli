@@ -4,21 +4,23 @@ import os from 'os';
 import { spawn } from 'child_process';
 import extract from 'extract-zip';
 import axios from 'axios';
+import Listr from 'listr';
+import chalk from 'chalk'
 
 async function unzipFiles(zip, dir){
   try {
     await extract(zip, { dir: dir })
-    // console.log('Extraction complete:', zip)
   } catch (err) {
+    console.log("%s unzipping the following file:", chalk.red.bold('ERROR'), zip)
     console.log(err)
   }
 
   fs.unlink(zip,function(err){
     if(err){
+      console.log("%s deleting the following file:", chalk.red.bold('ERROR'), zip)
       console.log(err);
     }
   })
-  // console.log('file deleted:', zip)
 }
 
 async function downloadZip(downloadUrl, zipFileName){
@@ -26,21 +28,19 @@ async function downloadZip(downloadUrl, zipFileName){
   const filestream = fs.createWriteStream(zipFileName);
   const response = await axios.get(downloadUrl, {responseType: "stream"})
     .catch((err) =>{
-      console.log("Error downloading the file for the following url:", downloadUrl)
+      console.log("%s downloading the following file:", chalk.red.bold('ERROR'), zipFileName)
       console.log(err);
     })
 
   response.data.pipe(filestream)
 
-  return new Promise(async (resolve, reject) => {
-    filestream.on('finish', async () => {
+  return new Promise((resolve, reject) => {
+    filestream.on('finish', () => {
       filestream.close();
-      // console.log("Download Complete for the following file", zipFileName);
-      // await unzipFiles(zipFileName, dir)
       resolve(true)
     })
     filestream.on('error', (err) =>{
-      console.log("Error downloading the file for the following url:", downloadUrl)
+      console.log("%s downloading the following file:", chalk.red.bold('ERROR'), zipFileName)
       console.log(err);
       reject
     })
@@ -89,17 +89,39 @@ async function createProject(name){
     fs.mkdirSync(projectDir, {recursive: true});
   }
   
-  console.log("Downloading Necessary Files ....")
+  const tasks = new Listr([
+    {
+      title: "Downloading Files",
+      task: () => {
+        return new Listr([
+          {
+            title: "Downloading MERN Starter Files",
+            task: () => downloadZip(mernStarterDownloadUrl, mernStarterZipName)
+          },
+          {
+            title: "Downloading VS Code (MAC version)",
+            task: () => downloadZip(vscDownloadUrl, vscZipName)
+          },
+          {
+            title: "Downloading Portable VSC Files",
+            task: () => downloadZip(portableDataDownloadUrl, portableDataZipName)
+          }
+        ], {concurrent: true})
+      }
+    },
+    {
+      title: "Installing",
+      task: () => Promise.all([unzipFiles(mernStarterZipName, projectDir), unzipFiles(vscZipName, projectDir), unzipFiles(portableDataZipName, projectDir)])
+    },
+    {
+      title: "Opening VS Code",
+      task: () => openProject(name, true)
+    },
 
-  await Promise.all([downloadZip(mernStarterDownloadUrl, mernStarterZipName), downloadZip(vscDownloadUrl, vscZipName), downloadZip(portableDataDownloadUrl, portableDataZipName)]);
-  console.log("Installing .....")
-  
+  ])
 
-  await Promise.all([unzipFiles(mernStarterZipName, projectDir), unzipFiles(vscZipName, projectDir), unzipFiles(portableDataZipName, projectDir)]);
-  console.log("Opening VS Code ....")
-
-  openProject(name, true)
-
+  await tasks.run();
+  console.log("%s %s project ready", chalk.bold.white('DONE'), name)
 
 }
 
@@ -107,7 +129,6 @@ export async function createOrOpen(options){
   options = {
     ...options
   }
-  // console.log(options)
 
   if(options.openProject){
     const projectName = options.openProject
