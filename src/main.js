@@ -59,11 +59,12 @@ async function openProject(name, withTemplate){
     open = spawn('open', ["-a", appPath, starterFiles])
   }else{
     open = spawn('open', ["-a", appPath])
+    console.log("%s opening \'%s\' project", chalk.bold.white('DONE'), name)
   }
 
-  open.stdout.on("data", (data)=>{
-    console.log(`data:\n${data}`)
-  })
+  // open.stdout.on("data", (data)=>{
+  //   console.log(`data:\n${data}`)
+  // })
 
   open.stderr.on("data", (err)=>{
     console.log(`error: ${err}`);
@@ -84,10 +85,6 @@ async function createProject(name){
 
   const mernStarterDownloadUrl = "https://github.com/k-morgan22/vscPortableStarter/raw/cli/mern-starter.zip"
   const mernStarterZipName = path.join(projectDir, 'mern-starter.zip')
-
-  if(!fs.existsSync(projectDir)){
-    fs.mkdirSync(projectDir, {recursive: true});
-  }
   
   const tasks = new Listr([
     {
@@ -120,8 +117,14 @@ async function createProject(name){
 
   ])
 
-  await tasks.run();
-  console.log("%s %s project ready", chalk.bold.white('DONE'), name)
+  if(!fs.existsSync(projectDir)){
+    fs.mkdirSync(projectDir, {recursive: true});
+    await tasks.run();
+    console.log("%s \'%s\' project ready", chalk.bold.white('DONE'), name)
+  } else{
+    console.log("%s \'%s\' project already exists", chalk.bold.red('ERROR'), name)
+  }
+
 
 }
 
