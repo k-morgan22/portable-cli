@@ -12,10 +12,12 @@ function parseArgumentsIntoOptions(rawArgs) {
       '--open': String,
       '--list': Boolean,
       '--template': String,
+      '--args': String,
       '-c': '--create',
       '-o': '--open',
       '-l': '--list',
       '-t': '--template',
+      '-a': '--args',
     },
     {
       argv: rawArgs.slice(1),
@@ -26,6 +28,7 @@ function parseArgumentsIntoOptions(rawArgs) {
     openProject: args['--open'] || undefined,
     listProjects: args['--list'] || false,
     template: args['--template'] || undefined,
+    args: args['--args'] || undefined,
   };
 }
 

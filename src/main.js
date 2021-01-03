@@ -48,19 +48,22 @@ async function downloadZip(downloadUrl, zipFileName){
   })
 }
 
-async function openProject(name, withTemplate, starter){
+async function openProject(name, withTemplate, args){
   
   const portableDir = path.join(os.homedir(), '/Desktop/vscPortable')
   const appPath = path.join(portableDir, name, '/Visual\ Studio\ Code.app')
-  const starterbase = starter + '-starter'
-  const starterPath = path.join(portableDir, name, starterbase)
 
   let open;
 
   if(withTemplate){
+    const starterbase = args + '-starter'
+    const starterPath = path.join(portableDir, name, starterbase)
     open = spawn('open', ["-a", appPath, starterPath])
-  }else{
+  }else if(!withTemplate && !args){
     open = spawn('open', ["-a", appPath])
+    console.log("%s opening \'%s\' project", chalk.bold.white('DONE'), name)
+  } else{
+    open = spawn('open', ["-a", appPath, args])
     console.log("%s opening \'%s\' project", chalk.bold.white('DONE'), name)
   }
 
@@ -143,7 +146,8 @@ export async function createOrOpen(options){
 
     if(options.openProject){
       const projectName = options.openProject
-      openProject(projectName, false)
+      const openArgs = options.args
+      openProject(projectName, false, openArgs)
     } else if(options.createProject){
       const projectName = options.createProject
       const starterName = options.template
