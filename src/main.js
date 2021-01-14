@@ -6,6 +6,7 @@ import extract from 'extract-zip';
 import axios from 'axios';
 import Listr from 'listr';
 import chalk from 'chalk'
+import urljoin from 'url-join';
 
 async function unzipFiles(zip, dir){
   try {
@@ -47,18 +48,22 @@ async function downloadZip(downloadUrl, zipFileName){
   })
 }
 
-async function openProject(name, withTemplate){
+async function openProject(name, withTemplate, args){
   
   const portableDir = path.join(os.homedir(), '/Desktop/vscPortable')
   const appPath = path.join(portableDir, name, '/Visual\ Studio\ Code.app')
-  const starterFiles = path.join(portableDir, name, '/starter')
 
   let open;
 
   if(withTemplate){
-    open = spawn('open', ["-a", appPath, starterFiles])
-  }else{
+    const starterbase = args + '-starter'
+    const starterPath = path.join(portableDir, name, starterbase)
+    open = spawn('open', ["-a", appPath, starterPath])
+  }else if(!withTemplate && !args){
     open = spawn('open', ["-a", appPath])
+    console.log("%s opening \'%s\' project", chalk.bold.white('DONE'), name)
+  } else{
+    open = spawn('open', ["-a", appPath, args])
     console.log("%s opening \'%s\' project", chalk.bold.white('DONE'), name)
   }
 
@@ -72,7 +77,7 @@ async function openProject(name, withTemplate){
 
 }
 
-async function createProject(name){
+async function createProject(name, starter){
 
   const projectDir = path.join(os.homedir(), '/Desktop/vscPortable', name)
   // console.log(projectDir)
@@ -83,8 +88,9 @@ async function createProject(name){
   const portableDataDownloadUrl = "https://github.com/k-morgan22/vscPortableStarter/raw/main/code-portable-data.zip"
   const portableDataZipName = path.join(projectDir, 'code-portable-data.zip')
 
-  const mernStarterDownloadUrl = "https://github.com/k-morgan22/vscPortableStarter/raw/cli/mern-starter.zip"
-  const mernStarterZipName = path.join(projectDir, 'mern-starter.zip')
+  const starterFile = starter + '-starter.zip'
+  const starterDownloadUrl = urljoin('https://github.com/k-morgan22/vscPortableStarter/raw/cli/templates/', starterFile)
+  const starterZipName = path.join(projectDir, starterFile)
   
   const tasks = new Listr([
     {
@@ -92,8 +98,8 @@ async function createProject(name){
       task: () => {
         return new Listr([
           {
-            title: "Downloading MERN Starter Files",
-            task: () => downloadZip(mernStarterDownloadUrl, mernStarterZipName)
+            title: "Downloading " + starter.toUpperCase() + " Starter Files",
+            task: () => downloadZip(starterDownloadUrl, starterZipName)
           },
           {
             title: "Downloading VS Code (MAC version)",
@@ -108,11 +114,11 @@ async function createProject(name){
     },
     {
       title: "Installing",
-      task: () => Promise.all([unzipFiles(mernStarterZipName, projectDir), unzipFiles(vscZipName, projectDir), unzipFiles(portableDataZipName, projectDir)])
+      task: () => Promise.all([unzipFiles(starterZipName, projectDir), unzipFiles(vscZipName, projectDir), unzipFiles(portableDataZipName, projectDir)])
     },
     {
       title: "Opening VS Code",
-      task: () => openProject(name, true)
+      task: () => openProject(name, true, starter)
     },
 
   ])
@@ -123,6 +129,7 @@ async function createProject(name){
     console.log("%s \'%s\' project ready", chalk.bold.white('DONE'), name)
   } else{
     console.log("%s \'%s\' project already exists", chalk.bold.red('ERROR'), name)
+    process.exit(1);
   }
 
 
@@ -133,14 +140,27 @@ export async function createOrOpen(options){
     ...options
   }
 
-  if(options.openProject){
-    const projectName = options.openProject
-    openProject(projectName, false)
-  } 
+  const correctTemplateNames = ['mern', 'mean', 'mevn', 'cli']
 
-  if(options.createProject){
-    const projectName = options.createProject
-    createProject(projectName)
+  if(correctTemplateNames.includes(options.template)){
+
+    if(options.openProject){
+      const projectName = options.openProject
+      const openArgs = options.args
+      openProject(projectName, false, openArgs)
+    } else if(options.createProject){
+      const projectName = options.createProject
+      const starterName = options.template
+      createProject(projectName, starterName)
+    }
+
+  } else{
+    console.error('%s Invalid template name. Use \'--help\' for more information.', chalk.red.bold('ERROR'));
+    process.exit(1);
   }
+
+
+
+
 
 }

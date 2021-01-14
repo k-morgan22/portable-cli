@@ -11,9 +11,13 @@ function parseArgumentsIntoOptions(rawArgs) {
       '--create': String,
       '--open': String,
       '--list': Boolean,
+      '--template': String,
+      '--args': String,
       '-c': '--create',
       '-o': '--open',
       '-l': '--list',
+      '-t': '--template',
+      '-a': '--args',
     },
     {
       argv: rawArgs.slice(1),
@@ -23,6 +27,8 @@ function parseArgumentsIntoOptions(rawArgs) {
     createProject: args['--create'] || undefined,
     openProject: args['--open'] || undefined,
     listProjects: args['--list'] || false,
+    template: args['--template'] || undefined,
+    args: args['--args'] || undefined,
   };
 }
 
@@ -30,6 +36,8 @@ async function promptForMissingOptions(options) {
 
   const taskQuestion = [];
   const questions = []
+  const defaultTemplate = 'mern';
+
   if(!options.createProject && !options.openProject && !options.listProjects){
     taskQuestion.push({
       type: 'list',
@@ -50,6 +58,18 @@ async function promptForMissingOptions(options) {
       type: 'input',
       name: 'createName',
       message: 'Project Name?',
+    });
+    questions.push({
+      type: 'list',
+      name: 'template',
+      message: 'Please choose which project template to use',
+      choices: [
+        'mern', 
+        'mean', 
+        'mevn',
+        'cli'
+      ],
+      default: defaultTemplate,
     });
   }
 
@@ -96,6 +116,7 @@ async function promptForMissingOptions(options) {
     ...options,
     createProject: options.createProject || answer.createName,
     openProject: options.openProject || answer.openName || answer.listSelect,
+    template: options.template || answer.template || defaultTemplate
   };
 }
 
