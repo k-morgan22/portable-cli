@@ -1,9 +1,10 @@
 {
   "name": "@kikimorgan/portable-cli",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A CLI to create portable versions of VS Code",
   "main": "src/index.js",
   "bin": {
+    "@kikimorgan/portable-cli": "bin/portable-cli",
     "portable-cli": "bin/portable-cli"
   },
   "publishConfig": {
@@ -17,8 +18,8 @@
     "vscode",
     "portable-cli"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Kiki Morgan",
+  "license": "MIT",
   "dependencies": {
     "arg": "^5.0.0",
     "axios": "^0.21.1",
@@ -28,5 +29,9 @@
     "inquirer": "^7.3.3",
     "listr": "^0.14.3",
     "url-join": "^4.0.1"
-  }
+  },
+  "files": [
+    "bin/",
+    "src/"
+  ]
 }
