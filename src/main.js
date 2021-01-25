@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { spawn } from 'child_process';
+import spawn from 'cross-spawn';
 import extract from 'extract-zip';
 import axios from 'axios';
 import Listr from 'listr';
@@ -77,6 +77,24 @@ async function openProject(name, withTemplate, args){
 
 }
 
+async function openInWindows(name, starter ){
+  const appPath = path.join(os.homedir(), '/Desktop/vscPortable', name, '/app/code.exe')
+  const starterbase = starter + '-starter'
+  const starterPath = path.join(os.homedir(), '/Desktop/vscPortable', name, starterbase)
+  let open;
+  
+  if(starter){
+    open = spawn('start', [appPath, starterPath])
+  } else{
+    open = spawn('start', [appPath])
+  }
+
+  open.stderr.on("data", (err)=>{
+    console.log(`error: ${err}`);
+  })
+
+}
+
 async function createProject(name, starter){
 
   const projectDir = path.join(os.homedir(), '/Desktop/vscPortable', name)
@@ -135,6 +153,65 @@ async function createProject(name, starter){
 
 }
 
+async function createInWindows(name, starter){
+
+  const projectDir = path.join(os.homedir(), '/Desktop/vscPortable', name)
+  const appDir = path.join(projectDir, '/app' )
+  // console.log(projectDir)
+  // console.log(appDir)
+
+  const vscDownloadUrl = "https://code.visualstudio.com/sha/download?build=stable&os=win32-x64-archive"
+  const vscZipName = path.join(projectDir, 'vscode-portable.zip')
+
+  const portableDataDownloadUrl = "https://github.com/k-morgan22/vscPortableStarter/raw/main/code-portable-data.zip"
+  const portableDataZipName = path.join(projectDir, 'data.zip')
+
+  const starterFile = starter + '-starter.zip'
+  const starterDownloadUrl = urljoin('https://github.com/k-morgan22/vscPortableStarter/raw/cli/templates/', starterFile)
+  const starterZipName = path.join(projectDir, starterFile)
+  
+  const tasks = new Listr([
+    {
+      title: "Downloading Files",
+      task: () => {
+        return new Listr([
+          {
+            title: "Downloading " + starter.toUpperCase() + " Starter Files",
+            task: () => downloadZip(starterDownloadUrl, starterZipName)
+          },
+          {
+            title: "Downloading VS Code (Windows version)",
+            task: () => downloadZip(vscDownloadUrl, vscZipName)
+          },
+          {
+            title: "Downloading Portable VSC Files",
+            task: () => downloadZip(portableDataDownloadUrl, portableDataZipName)
+          }
+        ], {concurrent: true})
+      }
+    },
+    {
+      title: "Installing",
+      task: () => Promise.all([unzipFiles(starterZipName, projectDir), unzipFiles(vscZipName, appDir), unzipFiles(portableDataZipName, appDir)])
+    },
+    {
+      title: "Opening VS Code",
+      task: () => openInWindows(name, starter)
+    },
+
+  ])
+
+  if(!fs.existsSync(appDir)){
+    fs.mkdirSync(appDir, {recursive: true});
+    await tasks.run();
+    console.log("%s \'%s\' project ready", chalk.bold.white('DONE'), name)
+  } else{
+    console.log("%s \'%s\' project already exists", chalk.bold.red('ERROR'), name)
+    process.exit(1);
+  }
+
+}
+
 export async function createOrOpen(options){
   options = {
     ...options
@@ -143,15 +220,31 @@ export async function createOrOpen(options){
   const correctTemplateNames = ['mern', 'mean', 'mevn', 'cli']
 
   if(correctTemplateNames.includes(options.template)){
+    console.log(os.platform())
 
     if(options.openProject){
-      const projectName = options.openProject
-      const openArgs = options.args
-      openProject(projectName, false, openArgs)
+
+      if(os.platform() === 'darwin' ) {
+        openProject(options.openProject, false, options.args)
+      } else if(os.platform() === 'win32'){
+        openInWindows(options.openProject)
+      }else{
+        console.error('%s OS not currently supported. Use \'--help\' for more information.', chalk.red.bold('ERROR'));
+        process.exit(1);
+      }
+
+      
     } else if(options.createProject){
-      const projectName = options.createProject
-      const starterName = options.template
-      createProject(projectName, starterName)
+
+      if(os.platform() === 'darwin' ) {
+        createProject(options.createProject, options.template)
+      } else if(os.platform() === 'win32'){
+        createInWindows(options.createProject, options.template)
+      }else{
+        console.error('%s OS not currently supported. Use \'--help\' for more information.', chalk.red.bold('ERROR'));
+        process.exit(1);
+      }
+
     }
 
   } else{
