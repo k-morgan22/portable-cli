@@ -84,9 +84,10 @@ async function openInWindows(name, starter ){
   let open;
   
   if(starter){
-    open = spawn('start', [appPath, starterPath])
+    open = spawn('start', [appPath, starterPath], {shell: true})
   } else{
-    open = spawn('start', [appPath])
+    open = spawn('start', [appPath], {shell: true})
+    console.log("%s opening \'%s\' project", chalk.bold.white('DONE'), name)
   }
 
   open.stderr.on("data", (err)=>{
@@ -98,7 +99,6 @@ async function openInWindows(name, starter ){
 async function createProject(name, starter){
 
   const projectDir = path.join(os.homedir(), '/Desktop/vscPortable', name)
-  // console.log(projectDir)
 
   const vscDownloadUrl = "https://go.microsoft.com/fwlink/?LinkID=620882"
   const vscZipName = path.join(projectDir, 'vscode-portable.zip')
@@ -157,13 +157,11 @@ async function createInWindows(name, starter){
 
   const projectDir = path.join(os.homedir(), '/Desktop/vscPortable', name)
   const appDir = path.join(projectDir, '/app' )
-  // console.log(projectDir)
-  // console.log(appDir)
 
   const vscDownloadUrl = "https://code.visualstudio.com/sha/download?build=stable&os=win32-x64-archive"
   const vscZipName = path.join(projectDir, 'vscode-portable.zip')
 
-  const portableDataDownloadUrl = "https://github.com/k-morgan22/vscPortableStarter/raw/main/code-portable-data.zip"
+  const portableDataDownloadUrl = "https://github.com/k-morgan22/vscPortableStarter/raw/cli/data.zip"
   const portableDataZipName = path.join(projectDir, 'data.zip')
 
   const starterFile = starter + '-starter.zip'
@@ -220,7 +218,6 @@ export async function createOrOpen(options){
   const correctTemplateNames = ['mern', 'mean', 'mevn', 'cli']
 
   if(correctTemplateNames.includes(options.template)){
-    console.log(os.platform())
 
     if(options.openProject){
 
